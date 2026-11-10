@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>효자초등학교병설유치원 지구수호대: 3D 숲속 미로 탐험</title>
+    <!-- Tailwind CSS with fallback handling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            font-family: 'Jua', -apple-system, BlinkMacSystemFont, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background-color: #0f172a;
+            color: #ffffff;
+        }
+
+        /* Fallback Utility Styles in case CDN is blocked */
+        .gaegu-font { font-family: 'Gaegu', cursive, sans-serif; }
+        
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.8)); }
+            50% { transform: scale(1.06); filter: drop-shadow(0 0 20px rgba(52, 211, 153, 1)); }
+        }
+
+        .pulse-target { animation: pulse-glow 1.8s infinite ease-in-out; }
+
+        @keyframes float-shake {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-4px) rotate(3deg); }
+        }
+
+        .shake-hazard { animation: float-shake 1.2s infinite ease-in-out; }
+        .timer-warning { color: #ef4444 !important; animation: pulse-glow 1s infinite ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen w-full flex flex-col justify-between relative">
+
+    <!-- Top UI Header -->
+    <header class="fixed top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 z-20 flex justify-between items-center bg-slate-900/85 backdrop-blur-md p-2 sm:p-3 rounded-2xl border-2 border-emerald-500/50 shadow-xl max-w-5xl mx-auto">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500 flex items-center justify-center text-lg sm:text-xl text-white shadow-lg shrink-0">
+                🌱
+            </div>
+            <div>
+                <h1 class="text-xs sm:text-base font-bold text-emerald-300 leading-tight">효자초등학교병설유치원 지구수호대</h1>
+                <p class="text-[10px] sm:text-xs text-slate-300 hidden md:block">전 세계 어린이들이 함께 만드는 푸른 지구 프로젝트</p>
+            </div>
+        </div>
+
+        <!-- Timer & Earth Health Status Bar -->
+        <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <!-- 5-Minute Safety Timer -->
+            <div class="flex items-center bg-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-amber-400/50 gap-1">
+                <span class="text-xs sm:text-sm">⏰</span>
+                <span id="timerText" class="text-xs sm:text-sm font-black text-amber-300">05:00</span>
+            </div>
+
+            <!-- Earth Health Bar -->
+            <div class="flex items-center bg-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-emerald-400/40 gap-1.5">
+                <span class="text-xs sm:text-sm font-bold text-emerald-200 hidden sm:inline">지구 건강:</span>
+                <div class="w-14 sm:w-28 bg-slate-700 h-3 sm:h-3.5 rounded-full overflow-hidden border border-slate-600">
+                    <div id="healthBar" class="bg-gradient-to-r from-emerald-500 to-green-300 h-full w-1/4 transition-all duration-500"></div>
+                </div>
+                <span id="healthText" class="text-[11px] sm:text-sm font-black text-emerald-300">25%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Checklist Bar -->
+    <div class="fixed top-14 sm:top-20 left-2 right-2 sm:left-3 sm:right-3 z-20 max-w-2xl mx-auto flex justify-around bg-slate-900/80 backdrop-blur-sm p-1.5 sm:p-2 rounded-xl border border-slate-700 text-[11px] sm:text-sm">
+        <div id="badge-water" class="flex items-center gap-1 opacity-40 transition-all">💧 <span class="hidden sm:inline">1.</span> 물 아끼기</div>
+        <div id="badge-electric" class="flex items-center gap-1 opacity-40 transition-all">⚡ <span class="hidden sm:inline">2.</span> 불 끄기</div>
+        <div id="badge-food" class="flex items-center gap-1 opacity-40 transition-all">🍱 <span class="hidden sm:inline">3.</span> 잔반 제로</div>
+        <div id="badge-recycle" class="flex items-center gap-1 opacity-40 transition-all">♻️ <span class="hidden sm:inline">4.</span> 분리수거</div>
+    </div>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container" class="w-full h-screen fixed inset-0 z-0"></div>
+
+    <!-- Center Toast Message -->
+    <div id="toastMessage" class="fixed top-28 sm:top-36 left-1/2 -translate-x-1/2 z-30 bg-amber-400 text-slate-900 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full font-bold shadow-2xl transition-all duration-300 pointer-events-none text-xs sm:text-base border-2 border-yellow-200 opacity-0 -translate-y-4 text-center max-w-xs sm:max-w-md">
+        3D 숲속 미로를 탐험하며 미션 장소로 이동하세요!
+    </div>
+
+    <!-- On-Screen Virtual Controller for Mobile/Touch -->
+    <div class="fixed bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-28 sm:w-44 sm:h-32 opacity-95 pointer-events-auto">
+        <div></div>
+        <button id="btn-up" class="bg-emerald-600 active:bg-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg border-b-2 sm:border-b-4 border-emerald-800 flex items-center justify-center text-lg sm:text-2xl">▲</button>
+        <div></div>
+        <button id="btn-left" class="bg-emerald-600 active:bg-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg border-b-2 sm:border-b-4 border-emerald-800 flex items-center justify-center text-lg sm:text-2xl">◀</button>
+        <button id="btn-down" class="bg-emerald-600 active:bg-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg border-b-2 sm:border-b-4 border-emerald-800 flex items-center justify-center text-lg sm:text-2xl">▼</button>
+        <button id="btn-right" class="bg-emerald-600 active:bg-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl shadow-lg border-b-2 sm:border-b-4 border-emerald-800 flex items-center justify-center text-lg sm:text-2xl">▶</button>
+    </div>
+
+    <!-- Bottom Left Guide Box -->
+    <div class="fixed bottom-4 left-4 z-20 hidden lg:block bg-slate-900/85 p-3 rounded-2xl border border-slate-700 text-xs text-slate-300 max-w-xs backdrop-blur-sm">
+        <p class="font-bold text-emerald-400 mb-1">🎮 지구수호대 가이드</p>
+        <p>• 방향키(<kbd class="px-1 bg-slate-800 rounded">▲▼◀▶</kbd>)로 탐험대를 이동해요.</p>
+        <p class="text-amber-300 mt-1">💨 매연: 처음 위치로 리셋</p>
+        <p class="text-amber-200">🗑️ 플라스틱 쓰레기: 뒤로 3칸 이동</p>
+        <p class="text-sky-300">🌀 황금 바람개비: 나무 뛰어넘기 점프!</p>
+    </div>
+
+    <!-- Reset Game Floating Button -->
+    <button id="btn-restart" class="fixed bottom-4 left-4 z-20 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-lg transition">
+        <i class="fa-solid fa-rotate-right mr-1"></i> 처음부터
+    </button>
+
+    <!-- ==================== MISSION & TIME OVER MODALS ==================== -->
+
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+
+        <!-- Time Over Modal -->
+        <div id="modal-timeover" class="mission-modal hidden bg-rose-950 border-4 border-rose-500 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4">
+            <div class="text-6xl animate-bounce">⏰</div>
+            <h2 class="text-2xl font-bold text-rose-200">5분 탐험 시간 종료!</h2>
+            <p class="text-rose-100 text-sm gaegu-font text-lg">
+                어린이 여러분의 건강을 위해 약속된 5분 게임 시간이 끝났어요.<br>
+                눈을 휴식하고 다음에 다시 도전해볼까요?
+            </p>
+            <button id="btn-restart-timeover" class="w-full bg-rose-500 hover:bg-rose-400 text-slate-950 font-extrabold py-3 rounded-2xl shadow-lg mt-2">
+                🔄 다시 탐험하기
+            </button>
+        </div>
+
+        <!-- 1. Water Mission Modal -->
+        <div id="modal-water" class="mission-modal hidden bg-sky-900 border-4 border-sky-400 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4">
+            <div class="text-5xl">💧</div>
+            <h2 class="text-2xl font-bold text-sky-200">수도꼭지 꼭 잠그기 미션!</h2>
+            <p class="text-sky-100 text-sm">물이 새어가고 있어요! 수도꼭지를 3번 터치해 꽉 잠가주세요!</p>
+
+            <div id="tap-faucet-btn" class="my-4 cursor-pointer select-none text-7xl transition-transform active:scale-90">
+                🚰
+            </div>
+
+            <div class="w-full bg-sky-950 rounded-full h-4 overflow-hidden border border-sky-600">
+                <div id="water-progress" class="bg-sky-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <!-- Environmental Tip Card -->
+            <div id="water-knowledge" class="hidden bg-sky-950/90 p-4 rounded-2xl border border-sky-400 text-left text-xs text-sky-200 flex flex-col gap-1 my-2">
+                <span class="font-bold text-yellow-300 text-sm">💡 어린이 환경 상식 💡</span>
+                <p>"양치할 때 양치컵을 사용하면 물 6리터를 아낄 수 있어요! 세수할 때도 물을 받아서 사용하면 지구 생물들이 기뻐해요."</p>
+            </div>
+
+            <button id="close-water-btn" class="hidden w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold py-3 rounded-2xl shadow-lg">
+                환경 지식 습득 완료! 미션 성공 ✨
+            </button>
+        </div>
+
+        <!-- 2. Electric Mission Modal -->
+        <div id="modal-electric" class="mission-modal hidden bg-amber-950 border-4 border-amber-400 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4">
+            <div class="text-5xl">⚡</div>
+            <h2 class="text-2xl font-bold text-amber-200">사용하지 않는 전등 끄기!</h2>
+            <p class="text-amber-100 text-sm">아무도 없는 방에 켜진 스위치를 터치해 불을 꺼주세요.</p>
+
+            <div id="switch-container" class="my-4 p-5 bg-amber-900 rounded-2xl border-2 border-amber-500 cursor-pointer flex flex-col items-center gap-2">
+                <div id="lightbulb-icon" class="text-6xl">💡</div>
+                <div id="switch-btn-ui" class="bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold">
+                    켜짐 (ON)
+                </div>
+            </div>
+
+            <div id="electric-knowledge" class="hidden bg-slate-900 p-4 rounded-2xl border border-amber-400 text-left text-xs text-amber-200 flex flex-col gap-1 my-2">
+                <span class="font-bold text-yellow-300 text-sm">💡 어린이 환경 상식 💡</span>
+                <p>"사용하지 않는 전기 플러그를 뽑거나 스위치를 끄면 이산화탄소가 줄어들어 지구가 뜨거워지는 것을 막을 수 있어요!"</p>
+            </div>
+
+            <button id="close-electric-btn" class="hidden w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-3 rounded-2xl shadow-lg">
+                환경 지식 습득 완료! 미션 성공 ✨
+            </button>
+        </div>
+
+        <!-- 3. Food Zero Mission Modal -->
+        <div id="modal-food" class="mission-modal hidden bg-emerald-950 border-4 border-emerald-400 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4">
+            <div class="text-5xl">🍱</div>
+            <h2 class="text-2xl font-bold text-emerald-200">음식 남기지 않기 (잔반 제로)!</h2>
+            <p class="text-emerald-100 text-sm">식판의 남은 음식을 3번 터치해 깨끗이 다 먹어요!</p>
+
+            <div id="food-plate" class="relative my-4 text-7xl cursor-pointer select-none">
+                🍱
+                <span id="food-items" class="absolute inset-0 flex items-center justify-center text-2xl gap-1">🥦🍎🥦</span>
+            </div>
+
+            <div class="w-full bg-emerald-950 rounded-full h-4 overflow-hidden border border-emerald-600">
+                <div id="food-progress" class="bg-emerald-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <div id="food-knowledge" class="hidden bg-slate-900 p-4 rounded-2xl border border-emerald-400 text-left text-xs text-emerald-200 flex flex-col gap-1 my-2">
+                <span class="font-bold text-yellow-300 text-sm">💡 어린이 환경 상식 💡</span>
+                <p>"음식물 쓰레기를 남기지 않고 다 먹으면 온실가스 탄소 배출량이 줄어들고 숲속 나무들이 더 건강해집니다!"</p>
+            </div>
+
+            <button id="close-food-btn" class="hidden w-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold py-3 rounded-2xl shadow-lg">
+                환경 지식 습득 완료! 미션 성공 ✨
+            </button>
+        </div>
+
+        <!-- 4. Advanced 5-Item Recycling Mission Modal -->
+        <div id="modal-recycle" class="mission-modal hidden bg-indigo-950 border-4 border-indigo-400 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4">
+            <div class="text-5xl">♻️</div>
+            <h2 class="text-2xl font-bold text-indigo-200">올바른 5종 분리수거 미션!</h2>
+            <p class="text-indigo-100 text-sm">보이는 쓰레기를 올바른 분리수거함에 쏙 넣어요! (남은 개수: <span id="recycle-remain-count" class="text-yellow-300 font-bold">3</span>개)</p>
+
+            <!-- Trash Display Box -->
+            <div class="bg-indigo-900/90 p-4 rounded-2xl border border-indigo-400 shadow flex flex-col items-center w-full">
+                <span class="text-xs text-indigo-300 font-bold mb-1">버려야 할 재활용품:</span>
+                <span id="current-trash-icon" class="text-5xl animate-bounce">🍾</span>
+                <span id="current-trash-name" class="text-sm font-bold text-yellow-300 mt-1">유리병</span>
+            </div>
+
+            <!-- 5 Bin Options -->
+            <div class="grid grid-cols-3 gap-2 w-full my-1">
+                <button onclick="handleRecycleChoice('glass')" class="bg-sky-900/80 hover:bg-sky-800 border border-sky-400 p-2 rounded-xl flex flex-col items-center text-xs font-bold active:scale-95">
+                    <span class="text-2xl">🍾</span> 유리
+                </button>
+                <button onclick="handleRecycleChoice('plastic')" class="bg-blue-900/80 hover:bg-blue-800 border border-blue-400 p-2 rounded-xl flex flex-col items-center text-xs font-bold active:scale-95">
+                    <span class="text-2xl">🥤</span> 플라스틱
+                </button>
+                <button onclick="handleRecycleChoice('paper')" class="bg-amber-900/80 hover:bg-amber-800 border border-amber-400 p-2 rounded-xl flex flex-col items-center text-xs font-bold active:scale-95">
+                    <span class="text-2xl">📦</span> 종이
+                </button>
+                <button onclick="handleRecycleChoice('can')" class="bg-slate-700/80 hover:bg-slate-600 border border-slate-400 p-2 rounded-xl flex flex-col items-center text-xs font-bold active:scale-95">
+                    <span class="text-2xl">🥫</span> 캔류
+                </button>
+                <button onclick="handleRecycleChoice('vinyl')" class="bg-purple-900/80 hover:bg-purple-800 border border-purple-400 p-2 rounded-xl flex flex-col items-center text-xs font-bold active:scale-95">
+                    <span class="text-2xl">🛍️</span> 비닐
+                </button>
+            </div>
+
+            <div id="recycle-knowledge" class="hidden bg-slate-900 p-3.5 rounded-2xl border border-indigo-400 text-left text-xs text-indigo-200 flex flex-col gap-1">
+                <span class="font-bold text-yellow-300">💡 어린이 환경 상식 💡</span>
+                <p>"비닐은 과자 봉지나 비닐봉지의 이물질을 깨끗이 씻어 말린 뒤 비닐류로 따로 배출해야 새 제품으로 다시 태어날 수 있어요!"</p>
+            </div>
+
+            <button id="close-recycle-btn" class="hidden w-full bg-indigo-400 hover:bg-indigo-300 text-slate-950 font-extrabold py-3 rounded-2xl shadow-lg">
+                환경 지식 습득 완료! 미션 성공 ✨
+            </button>
+        </div>
+
+        <!-- 5. Final Ending Celebration Screen -->
+        <div id="modal-ending" class="mission-modal hidden bg-gradient-to-b from-emerald-900 via-green-950 to-slate-950 border-4 border-yellow-400 text-white rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl text-center flex-col items-center gap-3 sm:gap-4 my-auto max-h-[90vh] overflow-y-auto">
+            <div class="text-5xl sm:text-6xl animate-bounce">🌍🏆✨</div>
+            <h2 class="text-xl sm:text-3xl font-black text-yellow-300 tracking-wide">지구수호대 미로 탈출 성공!</h2>
+            <p class="text-emerald-100 gaegu-font text-lg sm:text-xl leading-relaxed">
+                축하합니다! 4가지 미션을 모두 완수하여 지구가 다시 푸르고 건강해졌어요!
+            </p>
+
+            <!-- Environmental Summary List Card -->
+            <div class="w-full bg-slate-900/90 p-4 rounded-2xl border-2 border-emerald-400/80 shadow-inner flex flex-col items-center gap-3 text-left">
+                <span class="text-xs sm:text-sm text-yellow-300 font-bold text-center w-full">🌱 우리가 함께 약속하는 '지구를 지키는 방법' 🌱</span>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-xs text-slate-200">
+                    <div class="bg-sky-950/80 p-2.5 rounded-xl border border-sky-400/50 flex items-center gap-2">
+                        <span class="text-2xl shrink-0">💧</span>
+                        <div>
+                            <p class="font-bold text-sky-300">1. 물 아끼기</p>
+                            <p class="text-[11px] text-slate-300">양치컵을 사용하고 수도꼭지 꼭 잠그기</p>
+                        </div>
+                    </div>
+                    <div class="bg-amber-950/80 p-2.5 rounded-xl border border-amber-400/50 flex items-center gap-2">
+                        <span class="text-2xl shrink-0">⚡</span>
+                        <div>
+                            <p class="font-bold text-amber-300">2. 불 끄기</p>
+                            <p class="text-[11px] text-slate-300">아무도 없는 방 전등 끄고 플러그 뽑기</p>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-950/80 p-2.5 rounded-xl border border-emerald-400/50 flex items-center gap-2">
+                        <span class="text-2xl shrink-0">🍱</span>
+                        <div>
+                            <p class="font-bold text-emerald-300">3. 잔반 제로</p>
+                            <p class="text-[11px] text-slate-300">음식 남기지 않고 맛있게 다 먹기</p>
+                        </div>
+                    </div>
+                    <div class="bg-indigo-950/80 p-2.5 rounded-xl border border-indigo-400/50 flex items-center gap-2">
+                        <span class="text-2xl shrink-0">♻️</span>
+                        <div>
+                            <p class="font-bold text-indigo-300">4. 올바른 분리수거</p>
+                            <p class="text-[11px] text-slate-300">유리·플라스틱·종이·캔·비닐 나눠 버리기</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overuse Prevention Notice -->
+            <div class="w-full bg-rose-950/80 border border-rose-500/60 rounded-xl p-2.5 text-center text-xs text-rose-200 font-bold">
+                ⚠️ 게임 과몰입 방지를 위하여 하루에 1회만 체험해주세요.
+            </div>
+
+            <!-- Finish / Close Game Button -->
+            <button id="btn-close-final" onclick="finishGamePermanently()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-base py-3 rounded-2xl shadow-xl transition active:scale-95">
+                👏 탐험 완료 (종료하기)
+            </button>
+        </div>
+
+        <!-- 6. Permanent Game Locked Screen -->
+        <div id="modal-locked" class="mission-modal hidden bg-slate-900 border-4 border-emerald-400 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex-col items-center gap-4 my-auto">
+            <div class="text-6xl animate-bounce">🌟🌿</div>
+            <h2 class="text-2xl font-black text-emerald-300">오늘의 지구수호대 미션 완료!</h2>
+            <p class="text-slate-200 gaegu-font text-xl leading-relaxed">
+                훌륭하게 탐험을 마쳤습니다!<br>
+                지구를 지키는 아름다운 마음을 지녀주어서 고마워요.
+            </p>
+            <div class="w-full bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-4 text-sm text-emerald-200 font-bold">
+                💚 내일 다시 도전해 주세요! 💚
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==================== THREE.JS 3D ENGINE & GAME CODE ==================== -->
+    <script>
+        // --- Safe Global Error & Fallback Guard ---
+        window.addEventListener('error', function(e) {
+            console.warn("Script captured error:", e.message);
+        });
+
+        // --- Web Audio SFX Class ---
+        class SoundEngine {
+            constructor() { this.ctx = null; }
+            init() {
+                try {
+                    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+                        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                } catch(e) {}
+            }
+            playStep() {
+                try {
+                    this.init(); if(!this.ctx) return;
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.05);
+                    gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.05);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); osc.stop(this.ctx.currentTime + 0.05);
+                } catch(e){}
+            }
+            playJump() {
+                try {
+                    this.init(); if(!this.ctx) return;
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(250, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.25);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); osc.stop(this.ctx.currentTime + 0.25);
+                } catch(e){}
+            }
+            playHazardReset() {
+                try {
+                    this.init(); if(!this.ctx) return;
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+                } catch(e){}
+            }
+            playSuccess() {
+                try {
+                    this.init(); if(!this.ctx) return;
+                    const now = this.ctx.currentTime;
+                    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                        osc.type = 'triangle'; osc.frequency.setValueAtTime(f, now + i * 0.08);
+                        gain.gain.setValueAtTime(0.15, now + i * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+                        osc.connect(gain); gain.connect(this.ctx.destination);
+                        osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.25);
+                    });
+                } catch(e){}
+            }
+        }
+        const sound = new SoundEngine();
+
+        // --- Maze Definition ---
+        const mazeGrid = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 1],
+            [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+            [1, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+            [1, 0, 3, 0, 1, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+        const gridSize = 11;
+        const cellSize = 4;
+
+        let playerGridPos = { x: 1, y: 1 };
+        let playerMesh, leftArm, rightArm, leftLeg, rightLeg;
+        let ambientLight, dirLight;
+        let isWalking = false;
+        let isJumping = false;
+        let walkTime = 0;
+        let lastDirection = { dx: 0, dy: 1 };
+
+        let timerSeconds = 300;
+        let timerInterval = null;
+        let isGameFinished = false; // Flag to lock controls
+
+        const missions = [
+            { id: 'water', name: '수도꼭지', icon: '💧', x: 1, y: 9, completed: false, mesh: null },
+            { id: 'electric', name: '스위치', icon: '⚡', x: 9, y: 1, completed: false, mesh: null },
+            { id: 'food', name: '잔반제로', icon: '🍱', x: 5, y: 3, completed: false, mesh: null },
+            { id: 'recycle', name: '분리수거', icon: '♻️', x: 5, y: 7, completed: false, mesh: null }
+        ];
+
+        let scene, camera, renderer, container;
+
+        function init3DWorld() {
+            container = document.getElementById('canvas-container');
+            if (!container) return;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1e293b);
+            scene.fog = new THREE.FogExp2(0x1e293b, 0.012);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.BasicShadowMap;
+            container.appendChild(renderer.domElement);
+
+            ambientLight = new THREE.AmbientLight(0xfef08a, 1.2);
+            scene.add(ambientLight);
+
+            dirLight = new THREE.DirectionalLight(0xfffbeb, 1.3);
+            dirLight.position.set(25, 45, 25);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const worldGroup = new THREE.Group();
+            scene.add(worldGroup);
+
+            const groundGeo = new THREE.PlaneGeometry(gridSize * cellSize, gridSize * cellSize);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.8 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.set((gridSize * cellSize) / 2 - cellSize / 2, 0, (gridSize * cellSize) / 2 - cellSize / 2);
+            ground.receiveShadow = true;
+            worldGroup.add(ground);
+
+            function createForestTree(x, z) {
+                const treeGroup = new THREE.Group();
+                const trunkGeo = new THREE.CylinderGeometry(0.35, 0.5, 2.2);
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 1.1;
+                trunk.castShadow = true;
+                treeGroup.add(trunk);
+
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.5 });
+                for (let i = 0; i < 3; i++) {
+                    const leafGeo = new THREE.ConeGeometry(1.6 - i * 0.35, 2.2, 8);
+                    const leaf = new THREE.Mesh(leafGeo, leafMat);
+                    leaf.position.y = 2.2 + i * 1.2;
+                    leaf.castShadow = true;
+                    treeGroup.add(leaf);
+                }
+                treeGroup.position.set(x, 0, z);
+                return treeGroup;
+            }
+
+            function createSmokeHazard(x, z) {
+                const hazardGroup = new THREE.Group();
+                const smokeMat = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.9, transparent: true, opacity: 0.85 });
+                for(let i = 0; i < 4; i++) {
+                    const sphereGeo = new THREE.SphereGeometry(0.6 + Math.random() * 0.2, 8, 8);
+                    const sphere = new THREE.Mesh(sphereGeo, smokeMat);
+                    sphere.position.set((Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 0.5, (Math.random() - 0.5) * 0.8);
+                    hazardGroup.add(sphere);
+                }
+                hazardGroup.position.set(x, 0, z);
+                return hazardGroup;
+            }
+
+            function createTrashHazard(x, z) {
+                const trashGroup = new THREE.Group();
+                const boxGeo = new THREE.BoxGeometry(0.5, 0.4, 0.5);
+                const trashMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+                const box = new THREE.Mesh(boxGeo, trashMat);
+                box.position.y = 0.2;
+                trashGroup.add(box);
+
+                const bottleGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6);
+                const bottleMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+                const bottle = new THREE.Mesh(bottleGeo, bottleMat);
+                bottle.rotation.z = Math.PI / 3;
+                bottle.position.set(0.2, 0.2, 0.2);
+                trashGroup.add(bottle);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.font = '40px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠️', 32, 48);
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMat = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.scale.set(1.2, 1.2, 1);
+                sprite.position.y = 1.8;
+                trashGroup.add(sprite);
+
+                trashGroup.position.set(x, 0, z);
+                return trashGroup;
+            }
+
+            function createJumpTile(x, z) {
+                const jumpGroup = new THREE.Group();
+                const padGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.15, 16);
+                const padMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3, metalness: 0.5 });
+                const pad = new THREE.Mesh(padGeo, padMat);
+                pad.position.y = 0.08;
+                jumpGroup.add(pad);
+
+                const wheelGeo = new THREE.TorusGeometry(0.4, 0.08, 8, 16);
+                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7 });
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.x = Math.PI / 2;
+                wheel.position.y = 0.2;
+                jumpGroup.add(wheel);
+
+                jumpGroup.position.set(x, 0, z);
+                return jumpGroup;
+            }
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const posX = c * cellSize;
+                    const posZ = r * cellSize;
+                    const type = mazeGrid[r][c];
+                    if (type === 1) worldGroup.add(createForestTree(posX, posZ));
+                    else if (type === 2) worldGroup.add(createSmokeHazard(posX, posZ));
+                    else if (type === 3) worldGroup.add(createTrashHazard(posX, posZ));
+                    else if (type === 4) worldGroup.add(createJumpTile(posX, posZ));
+                }
+            }
+
+            function create3DMissionObject(mission) {
+                const group = new THREE.Group();
+                const baseGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.2, 16);
+                const baseMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4, emissive: 0x14532d });
+                const base = new THREE.Mesh(baseGeo, baseMat);
+                base.position.y = 0.1;
+                group.add(base);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.font = '80px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(mission.icon, 64, 96);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMat = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.scale.set(2.5, 2.5, 1);
+                sprite.position.y = 2.2;
+                group.add(sprite);
+
+                const posX = mission.x * cellSize;
+                const posZ = mission.y * cellSize;
+                group.position.set(posX, 0, posZ);
+                return group;
+            }
+
+            missions.forEach(m => {
+                m.mesh = create3DMissionObject(m);
+                worldGroup.add(m.mesh);
+            });
+
+            function buildExplorerCharacter() {
+                const charGroup = new THREE.Group();
+
+                const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
+                const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+                const head = new THREE.Mesh(headGeo, headMat);
+                head.position.y = 1.7;
+                head.castShadow = true;
+                charGroup.add(head);
+
+                const hatGroup = new THREE.Group();
+                const brimGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.06, 16);
+                const hatMat = new THREE.MeshStandardMaterial({ color: 0x4b5320, roughness: 0.7 });
+                const brim = new THREE.Mesh(brimGeo, hatMat);
+                hatGroup.add(brim);
+
+                const crownGeo = new THREE.CylinderGeometry(0.42, 0.48, 0.35, 16);
+                const crown = new THREE.Mesh(crownGeo, hatMat);
+                crown.position.y = 0.18;
+                hatGroup.add(crown);
+
+                hatGroup.position.set(0, 2.05, 0);
+                hatGroup.rotation.x = -0.05;
+                charGroup.add(hatGroup);
+
+                const bodyGeo = new THREE.CylinderGeometry(0.4, 0.35, 0.8, 12);
+                const vestMat = new THREE.MeshStandardMaterial({ color: 0x556b2f, roughness: 0.6 });
+                const torso = new THREE.Mesh(bodyGeo, vestMat);
+                torso.position.y = 1.0;
+                torso.castShadow = true;
+                charGroup.add(torso);
+
+                const packGeo = new THREE.BoxGeometry(0.45, 0.5, 0.25);
+                const packMat = new THREE.MeshStandardMaterial({ color: 0x3f2e18, roughness: 0.8 });
+                const pack = new THREE.Mesh(packGeo, packMat);
+                pack.position.set(0, 1.05, -0.3);
+                charGroup.add(pack);
+
+                const armGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.6);
+                const armMat = new THREE.MeshStandardMaterial({ color: 0x556b2f });
+
+                leftArm = new THREE.Mesh(armGeo, armMat);
+                leftArm.position.set(-0.5, 1.0, 0);
+                leftArm.castShadow = true;
+                charGroup.add(leftArm);
+
+                rightArm = new THREE.Mesh(armGeo, armMat);
+                rightArm.position.set(0.5, 1.0, 0);
+                rightArm.castShadow = true;
+                charGroup.add(rightArm);
+
+                const legGeo = new THREE.CylinderGeometry(0.13, 0.11, 0.65);
+                const legMat = new THREE.MeshStandardMaterial({ color: 0x271c19 });
+
+                leftLeg = new THREE.Mesh(legGeo, legMat);
+                leftLeg.position.set(-0.2, 0.35, 0);
+                leftLeg.castShadow = true;
+                charGroup.add(leftLeg);
+
+                rightLeg = new THREE.Mesh(legGeo, legMat);
+                rightLeg.position.set(0.2, 0.35, 0);
+                rightLeg.castShadow = true;
+                charGroup.add(rightLeg);
+
+                return charGroup;
+            }
+
+            playerMesh = buildExplorerCharacter();
+            scene.add(playerMesh);
+
+            updatePlayerPosition(false);
+            startTimer();
+            animate();
+        }
+
+        function updateCamera() {
+            if (!playerMesh || !camera) return;
+            const pX = playerMesh.position.x;
+            const pZ = playerMesh.position.z;
+            const aspect = window.innerWidth / window.innerHeight;
+            const camHeight = aspect < 1 ? 22 : 17;
+            const camDist = aspect < 1 ? 20 : 16;
+            camera.position.set(pX, camHeight, pZ + camDist);
+            camera.lookAt(pX, 1, pZ);
+        }
+
+        function updatePlayerPosition(smooth = true) {
+            if (!playerMesh) return;
+            const targetX = playerGridPos.x * cellSize;
+            const targetZ = playerGridPos.y * cellSize;
+
+            if (!smooth) {
+                playerMesh.position.x = targetX;
+                playerMesh.position.z = targetZ;
+                updateCamera();
+                return;
+            }
+
+            const dx = targetX - playerMesh.position.x;
+            const dz = targetZ - playerMesh.position.z;
+            playerMesh.position.x += dx * 0.25;
+            playerMesh.position.z += dz * 0.25;
+
+            if (Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05) {
+                const angle = Math.atan2(dx, dz);
+                playerMesh.rotation.y = angle;
+                isWalking = true;
+            } else {
+                isWalking = false;
+            }
+
+            updateCamera();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerSeconds = 300;
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
+
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    showTimeOverModal();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const min = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const sec = String(timerSeconds % 60).padStart(2, '0');
+            const el = document.getElementById('timerText');
+            if (el) {
+                el.innerText = `${min}:${sec}`;
+                if (timerSeconds <= 60) el.classList.add('timer-warning');
+                else el.classList.remove('timer-warning');
+            }
+        }
+
+        function showTimeOverModal() {
+            const overlay = document.getElementById('modalOverlay');
+            if (overlay) overlay.classList.remove('hidden');
+            document.querySelectorAll('.mission-modal').forEach(m => m.classList.add('hidden'));
+            const timeover = document.getElementById('modal-timeover');
+            if (timeover) {
+                timeover.classList.remove('hidden');
+                timeover.classList.add('flex');
+            }
+        }
+
+        function tryMove(dx, dy) {
+            if (isGameFinished) return; // Prevent movement when game is locked
+            lastDirection = { dx, dy };
+            const nextX = playerGridPos.x + dx;
+            const nextY = playerGridPos.y + dy;
+
+            if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) return;
+
+            const targetTile = mazeGrid[nextY][nextX];
+            if (targetTile === 1 && !isJumping) return;
+
+            playerGridPos.x = nextX;
+            playerGridPos.y = nextY;
+            sound.playStep();
+
+            if (targetTile === 2) {
+                sound.playHazardReset();
+                showToast("💨 매연 구름에 부딪혔어요! 처음으로 되돌아갑니다.");
+                playerGridPos = { x: 1, y: 1 };
+                return;
+            }
+
+            if (targetTile === 3) {
+                sound.playHazardReset();
+                showToast("🗑️ 쓰레기 더미 때문에 뒤로 3칸 물러납니다!");
+                const backX = Math.max(1, playerGridPos.x - dx * 3);
+                const backY = Math.max(1, playerGridPos.y - dy * 3);
+                playerGridPos.x = backX;
+                playerGridPos.y = backY;
+                return;
+            }
+
+            if (targetTile === 4) {
+                sound.playJump();
+                showToast("🌀 황금 바람개비 발판! 나무를 사뿐히 뛰어넘습니다!");
+                isJumping = true;
+                
+                const landX = Math.min(gridSize - 2, Math.max(1, playerGridPos.x + dx * 2));
+                const landY = Math.min(gridSize - 2, Math.max(1, playerGridPos.y + dy * 2));
+
+                let jumpProgress = 0;
+                const jumpAnim = setInterval(() => {
+                    jumpProgress += 0.1;
+                    if (playerMesh) playerMesh.position.y = Math.sin(jumpProgress * Math.PI) * 3;
+
+                    if (jumpProgress >= 1) {
+                        clearInterval(jumpAnim);
+                        if (playerMesh) playerMesh.position.y = 0;
+                        playerGridPos.x = landX;
+                        playerGridPos.y = landY;
+                        isJumping = false;
+                        checkMissionTrigger();
+                    }
+                }, 30);
+                return;
+            }
+
+            checkMissionTrigger();
+        }
+
+        function checkMissionTrigger() {
+            missions.forEach(m => {
+                if (!m.completed && playerGridPos.x === m.x && playerGridPos.y === m.y) {
+                    openMissionModal(m.id);
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (isGameFinished) return;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') tryMove(0, -1);
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') tryMove(0, 1);
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') tryMove(-1, 0);
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') tryMove(1, 0);
+        });
+
+        document.getElementById('btn-up').addEventListener('click', () => tryMove(0, -1));
+        document.getElementById('btn-down').addEventListener('click', () => tryMove(0, 1));
+        document.getElementById('btn-left').addEventListener('click', () => tryMove(-1, 0));
+        document.getElementById('btn-right').addEventListener('click', () => tryMove(1, 0));
+
+        document.getElementById('btn-restart').addEventListener('click', restartGame);
+        document.getElementById('btn-restart-timeover').addEventListener('click', restartGame);
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            if (!toast) return;
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', '-translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', '-translate-y-4');
+            }, 3000);
+        }
+
+        const modalOverlay = document.getElementById('modalOverlay');
+
+        function openMissionModal(id) {
+            if (modalOverlay) modalOverlay.classList.remove('hidden');
+            document.querySelectorAll('.mission-modal').forEach(m => m.classList.add('hidden'));
+
+            if (id === 'water') {
+                waterTaps = 0;
+                document.getElementById('water-progress').style.width = '0%';
+                document.getElementById('water-knowledge').classList.add('hidden');
+                document.getElementById('close-water-btn').classList.add('hidden');
+                document.getElementById('modal-water').classList.remove('hidden');
+                document.getElementById('modal-water').classList.add('flex');
+            } else if (id === 'electric') {
+                lightOn = true;
+                document.getElementById('lightbulb-icon').innerText = '💡';
+                document.getElementById('switch-btn-ui').innerText = '켜짐 (ON)';
+                document.getElementById('switch-btn-ui').className = 'bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold';
+                document.getElementById('electric-knowledge').classList.add('hidden');
+                document.getElementById('close-electric-btn').classList.add('hidden');
+                document.getElementById('modal-electric').classList.remove('hidden');
+                document.getElementById('modal-electric').classList.add('flex');
+            } else if (id === 'food') {
+                foodTaps = 0;
+                document.getElementById('food-items').innerText = '🥦🍎🥦';
+                document.getElementById('food-progress').style.width = '0%';
+                document.getElementById('food-knowledge').classList.add('hidden');
+                document.getElementById('close-food-btn').classList.add('hidden');
+                document.getElementById('modal-food').classList.remove('hidden');
+                document.getElementById('modal-food').classList.add('flex');
+            } else if (id === 'recycle') {
+                recycleIndex = 0;
+                updateRecycleUI();
+                document.getElementById('recycle-knowledge').classList.add('hidden');
+                document.getElementById('close-recycle-btn').classList.add('hidden');
+                document.getElementById('modal-recycle').classList.remove('hidden');
+                document.getElementById('modal-recycle').classList.add('flex');
+            }
+        }
+
+        let waterTaps = 0;
+        document.getElementById('tap-faucet-btn').addEventListener('click', () => {
+            if (waterTaps >= 3) return;
+            waterTaps++;
+            sound.playStep();
+            document.getElementById('water-progress').style.width = (waterTaps / 3 * 100) + '%';
+            if (waterTaps === 3) {
+                sound.playSuccess();
+                document.getElementById('water-knowledge').classList.remove('hidden');
+                document.getElementById('close-water-btn').classList.remove('hidden');
+            }
+        });
+        document.getElementById('close-water-btn').addEventListener('click', () => completeMission('water'));
+
+        let lightOn = true;
+        document.getElementById('switch-container').addEventListener('click', () => {
+            if (!lightOn) return;
+            lightOn = false;
+            sound.playSuccess();
+            document.getElementById('lightbulb-icon').innerText = '🌙';
+            document.getElementById('switch-btn-ui').innerText = '꺼짐 (OFF)';
+            document.getElementById('switch-btn-ui').className = 'bg-emerald-600 text-white text-xs px-3 py-1 rounded-full font-bold';
+            document.getElementById('electric-knowledge').classList.remove('hidden');
+            document.getElementById('close-electric-btn').classList.remove('hidden');
+        });
+        document.getElementById('close-electric-btn').addEventListener('click', () => completeMission('electric'));
+
+        let foodTaps = 0;
+        document.getElementById('food-plate').addEventListener('click', () => {
+            if (foodTaps >= 3) return;
+            foodTaps++;
+            sound.playStep();
+            document.getElementById('food-progress').style.width = (foodTaps / 3 * 100) + '%';
+            if (foodTaps === 1) document.getElementById('food-items').innerText = '🍎🥦';
+            if (foodTaps === 2) document.getElementById('food-items').innerText = '🍎';
+            if (foodTaps === 3) {
+                sound.playSuccess();
+                document.getElementById('food-items').innerText = '✨깨끗함✨';
+                document.getElementById('food-knowledge').classList.remove('hidden');
+                document.getElementById('close-food-btn').classList.remove('hidden');
+            }
+        });
+        document.getElementById('close-food-btn').addEventListener('click', () => completeMission('food'));
+
+        const defaultTrashList = [
+            { name: '유리병', icon: '🍾', type: 'glass' },
+            { name: '페트병', icon: '🥤', type: 'plastic' },
+            { name: '신문지', icon: '📦', type: 'paper' },
+            { name: '음료수 캔', icon: '🥫', type: 'can' },
+            { name: '과자 비닐봉지', icon: '🛍️', type: 'vinyl' }
+        ];
+        let trashList = [];
+        let recycleIndex = 0;
+
+        function shuffleTrashList() {
+            // Create a randomized copy of the trash list using Fisher-Yates shuffle
+            trashList = [...defaultTrashList];
+            for (let i = trashList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [trashList[i], trashList[j]] = [trashList[j], trashList[i]];
+            }
+        }
+
+        function updateRecycleUI() {
+            if (trashList.length === 0) return;
+            const item = trashList[recycleIndex];
+            document.getElementById('current-trash-icon').innerText = item.icon;
+            document.getElementById('current-trash-name').innerText = item.name;
+            document.getElementById('recycle-remain-count').innerText = trashList.length - recycleIndex;
+        }
+
+        window.handleRecycleChoice = function(chosenType) {
+            if (recycleIndex >= trashList.length) return;
+            const currentItem = trashList[recycleIndex];
+            if (chosenType === currentItem.type) {
+                sound.playStep();
+                recycleIndex++;
+                if (recycleIndex >= trashList.length) {
+                    sound.playSuccess();
+                    document.getElementById('recycle-knowledge').classList.remove('hidden');
+                    document.getElementById('close-recycle-btn').classList.remove('hidden');
+                } else {
+                    updateRecycleUI();
+                }
+            } else {
+                sound.playHazardReset();
+                showToast("앗! 알맞은 분리수거함을 다시 찾아보아요!");
+            }
+        };
+        document.getElementById('close-recycle-btn').addEventListener('click', () => completeMission('recycle'));
+
+        function completeMission(id) {
+            const m = missions.find(x => x.id === id);
+            if (m) m.completed = true;
+
+            if (modalOverlay) modalOverlay.classList.add('hidden');
+
+            const badge = document.getElementById(`badge-${id}`);
+            if (badge) {
+                badge.classList.remove('opacity-40');
+                badge.classList.add('opacity-100', 'font-bold', 'text-emerald-400');
+            }
+
+            const completedCount = missions.filter(x => x.completed).length;
+            const healthPercent = 25 + completedCount * 25;
+            const healthBar = document.getElementById('healthBar');
+            const healthText = document.getElementById('healthText');
+            if (healthBar) healthBar.style.width = healthPercent + '%';
+            if (healthText) healthText.innerText = healthPercent + '%';
+
+            sound.playSuccess();
+            showToast(`✨ ${m ? m.name : ''} 미션 완수! 지구 건강이 ${healthPercent}%가 되었어요!`);
+
+            if (completedCount === 4) {
+                setTimeout(showEndingScreen, 1200);
+            }
+        }
+
+        function openMissionModal(id) {
+            if (modalOverlay) modalOverlay.classList.remove('hidden');
+            document.querySelectorAll('.mission-modal').forEach(m => m.classList.add('hidden'));
+
+            if (id === 'water') {
+                waterTaps = 0;
+                document.getElementById('water-progress').style.width = '0%';
+                document.getElementById('water-knowledge').classList.add('hidden');
+                document.getElementById('close-water-btn').classList.add('hidden');
+                document.getElementById('modal-water').classList.remove('hidden');
+                document.getElementById('modal-water').classList.add('flex');
+            } else if (id === 'electric') {
+                lightOn = true;
+                document.getElementById('lightbulb-icon').innerText = '💡';
+                document.getElementById('switch-btn-ui').innerText = '켜짐 (ON)';
+                document.getElementById('switch-btn-ui').className = 'bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold';
+                document.getElementById('electric-knowledge').classList.add('hidden');
+                document.getElementById('close-electric-btn').classList.add('hidden');
+                document.getElementById('modal-electric').classList.remove('hidden');
+                document.getElementById('modal-electric').classList.add('flex');
+            } else if (id === 'food') {
+                foodTaps = 0;
+                document.getElementById('food-items').innerText = '🥦🍎🥦';
+                document.getElementById('food-progress').style.width = '0%';
+                document.getElementById('food-knowledge').classList.add('hidden');
+                document.getElementById('close-food-btn').classList.add('hidden');
+                document.getElementById('modal-food').classList.remove('hidden');
+                document.getElementById('modal-food').classList.add('flex');
+            } else if (id === 'recycle') {
+                recycleIndex = 0;
+                shuffleTrashList(); // Shuffle items randomly whenever mission opens
+                updateRecycleUI();
+                document.getElementById('recycle-knowledge').classList.add('hidden');
+                document.getElementById('close-recycle-btn').classList.add('hidden');
+                document.getElementById('modal-recycle').classList.remove('hidden');
+                document.getElementById('modal-recycle').classList.add('flex');
+            }
+        }
+
+        function showEndingScreen() {
+            if (typeof confetti === 'function') {
+                try { confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } }); } catch(e){}
+            }
+            if (modalOverlay) modalOverlay.classList.remove('hidden');
+            document.querySelectorAll('.mission-modal').forEach(m => m.classList.add('hidden'));
+            const ending = document.getElementById('modal-ending');
+            if (ending) {
+                ending.classList.remove('hidden');
+                ending.classList.add('flex');
+            }
+        }
+
+        window.finishGamePermanently = function() {
+            isGameFinished = true;
+            if (timerInterval) clearInterval(timerInterval);
+
+            // Hide virtual controls
+            const controls = document.querySelector('.fixed.bottom-4.right-4');
+            if (controls) controls.style.display = 'none';
+
+            // Show permanent locked modal screen
+            document.querySelectorAll('.mission-modal').forEach(m => m.classList.add('hidden'));
+            const lockedModal = document.getElementById('modal-locked');
+            if (lockedModal) {
+                lockedModal.classList.remove('hidden');
+                lockedModal.classList.add('flex');
+            }
+
+            // Attempt to close window if browser permits
+            try { window.close(); } catch(e){}
+        };
+
+        function restartGame() {
+            if (isGameFinished) return; // Disallow restarting if completed
+            if (modalOverlay) modalOverlay.classList.add('hidden');
+            playerGridPos = { x: 1, y: 1 };
+            missions.forEach(m => m.completed = false);
+
+            ['water', 'electric', 'food', 'recycle'].forEach(id => {
+                const el = document.getElementById(`badge-${id}`);
+                if (el) {
+                    el.classList.remove('opacity-100', 'font-bold', 'text-emerald-400');
+                    el.classList.add('opacity-40');
+                }
+            });
+
+            const healthBar = document.getElementById('healthBar');
+            const healthText = document.getElementById('healthText');
+            if (healthBar) healthBar.style.width = '25%';
+            if (healthText) healthText.innerText = '25%';
+            updatePlayerPosition(false);
+            startTimer();
+            showToast("수호대원 출동! 지구를 지키러 출발해봅시다!");
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updatePlayerPosition(true);
+
+            if (isWalking && leftArm && rightArm && leftLeg && rightLeg) {
+                walkTime += 0.2;
+                leftArm.rotation.x = Math.sin(walkTime) * 0.6;
+                rightArm.rotation.x = -Math.sin(walkTime) * 0.6;
+                leftLeg.rotation.x = -Math.sin(walkTime) * 0.6;
+                rightLeg.rotation.x = Math.sin(walkTime) * 0.6;
+            } else if (leftArm && rightArm && leftLeg && rightLeg) {
+                leftArm.rotation.x = 0; rightArm.rotation.x = 0;
+                leftLeg.rotation.x = 0; rightLeg.rotation.x = 0;
+            }
+
+            missions.forEach(m => {
+                if (m.mesh && !m.completed) {
+                    m.mesh.rotation.y += 0.02;
+                }
+            });
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function startApp() {
+            if (typeof THREE !== 'undefined') {
+                init3DWorld();
+            } else {
+                console.warn("Three.js not yet loaded, retrying...");
+                setTimeout(startApp, 200);
+            }
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            startApp();
+        } else {
+            document.addEventListener('DOMContentLoaded', startApp);
+        }
+    </script>
+</body>
+</html>
